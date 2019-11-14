@@ -1,14 +1,13 @@
-const properties = require('./json/properties.json');
-const users = require('./json/users.json');
-const { Pool } = require('pg');
+const properties = require("./json/properties.json");
+const users = require("./json/users.json");
+const { Pool } = require("pg");
 
 const pool = new Pool({
-  user: 'vagrant',
-  password: '123',
-  host: 'localhost',
-  database: 'lightbnb',
+  user: "vagrant",
+  password: "123",
+  host: "localhost",
+  database: "lightbnb"
 });
-
 
 /// Users
 
@@ -18,17 +17,20 @@ const pool = new Pool({
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = function(email) {
-  let user;
-  for (const userId in users) {
-    user = users[userId];
-    if (user.email.toLowerCase() === email.toLowerCase()) {
-      break;
+  const query = {
+    text: `
+      SELECT * FROM users
+      WHERE email = $1 `,
+    values: [email]
+  };
+  return pool.query(query).then(res => {
+    if (res.rows.length === 0) {
+      return null;
     } else {
-      user = null;
+      return res.rows[0];
     }
-  }
-  return Promise.resolve(user);
-}
+  });
+};
 exports.getUserWithEmail = getUserWithEmail;
 
 /**
@@ -37,22 +39,38 @@ exports.getUserWithEmail = getUserWithEmail;
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithId = function(id) {
-  return Promise.resolve(users[id]);
-}
+  const query = {
+    text: `
+      SELECT * FROM users
+      WHERE id = $1 `,
+    values: [id]
+  };
+  return pool.query(query).then(res => {
+    if (res.rows.length === 0) {
+      return null;
+    } else {
+      return res.rows[0];
+    }
+  });
+};
 exports.getUserWithId = getUserWithId;
-
 
 /**
  * Add a new user to the database.
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
-const addUser =  function(user) {
-  const userId = Object.keys(users).length + 1;
-  user.id = userId;
-  users[userId] = user;
-  return Promise.resolve(user);
-}
+const addUser = function(user) {
+  const { name, email, password } = user
+  const query = {
+    text: `
+      INSERT INTO users (name, email, password) 
+      VALUES ($1, $2, $3)`,
+    values: [name, email, password]
+  };
+  return pool
+  .query(query)
+};
 exports.addUser = addUser;
 
 /// Reservations
@@ -64,21 +82,23 @@ exports.addUser = addUser;
  */
 const getAllReservations = function(guest_id, limit = 10) {
   return getAllProperties(null, 2);
-}
+};
 exports.getAllReservations = getAllReservations;
 
 /// Properties
 
 const getAllProperties = function(options, limit = 10) {
   return pool
-    .query(`
+    .query(
+      `
       SELECT * FROM properties
       LIMIT $1
-      `, [limit])
+      `,
+      [limit]
+    )
     .then(res => res.rows);
-}
+};
 exports.getAllProperties = getAllProperties;
-
 
 /**
  * Add a property to the database
@@ -90,5 +110,5 @@ const addProperty = function(property) {
   property.id = propertyId;
   properties[propertyId] = property;
   return Promise.resolve(property);
-}
+};
 exports.addProperty = addProperty;
